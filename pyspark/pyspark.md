@@ -15,7 +15,7 @@ df = spark_df.withColumn("my_texts", F.when(F.instr(spark_df["my_texts"], '_text
 
 *[Mix use of Columns from two spark DataFrames does NOT work](https://stackoverflow.com/questions/57093177/pyspark-isin-with-column-in-argument-doesnt-exclude-rows)
 
-It seems that when you mix the columns from two spark DataFrames, the code won't work as expected. For example, 
+It seems that when you mix the columns from two spark DataFrames in one line, the code won't work as expected. For example, 
 If both `df` and `df_t` have a column `name`, following code won't produce expected results. It will always return empty. 
 Since when the spark creates execution plan for this statement, it seems to remove the DataFrame reference, so in both places the `name` belongs to `df`.
 
