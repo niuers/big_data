@@ -4,6 +4,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import udf
 
 my_udf = udf(lambda my_texts: "text_passed" if my_texts.startswith('_text1') == True else my_texts, StringType())
+# The column 'my_texts' can be an existing column name
 df = spark_df.withColumn('my_texts', my_udf(spark_df['my_texts']))
 
 ```
