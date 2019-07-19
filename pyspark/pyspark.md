@@ -13,7 +13,7 @@ This specific problem can also be done without using UDF
 df = spark_df.withColumn("my_texts", F.when(F.instr(spark_df["my_texts"], '_text1')>0, 'text_passed').otherwise("my_texts"))
 ```
 
-- [Mix use of Columns from two spark DataFrames does NOT work](https://stackoverflow.com/questions/57093177/pyspark-isin-with-column-in-argument-doesnt-exclude-rows)
+- [Don't put two spark DataFrames in one line!](https://stackoverflow.com/questions/57093177/pyspark-isin-with-column-in-argument-doesnt-exclude-rows)
 
 It seems that when you mix the columns from two spark DataFrames in one line, the code won't work as expected. 
 
