@@ -31,3 +31,35 @@ df_f.explain(True)
 ```
 df_f = df.filter(df.name.isin(df_t.name2)== False)
 ```
+
+- [Calling `pandas shift` within `pandas_udf` causes error if the target column is initialized with F.lit()](https://stackoverflow.com/questions/57152199/value-at-index-is-null-error-when-using-pd-shift-inside-pandas-udf)
+Following code will cause errors:
+```
+spark = SparkSession.builder.appName('test').getOrCreate()
+df = spark.createDataFrame([Row(id=1, name='a', c='3'),
+Row(id=2, name='b', c='6'),
+Row(id=3, name='a', c='2'),
+Row(id=4, name='b', c='9'),
+Row(id=5, name='c', c='7')])
+
+# This will cause the error
+df = df.withColumn('f', F.lit(1))
+## This is ok.
+## df = df.withColumn('f', df['c'])
+df.show()
+
+@pandas_udf(df.schema, PandasUDFType.GROUPED_MAP)
+def shift_test(pdf):
+    pdf['f'] = pdf['c'].shift(1)
+return pdf
+
+df = df.groupby(['name']).apply(shift_test)
+df.show()
+
+```
+The error:
+```
+Caused by: java.lang.IllegalStateException: Value at index is null
+```
+
+  
