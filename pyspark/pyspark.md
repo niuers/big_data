@@ -33,6 +33,7 @@ df_f = df.filter(df.name.isin(df_t.name2)== False)
 ```
 
 - [Calling `pandas shift` within `pandas_udf` causes error if the target column is initialized with F.lit()](https://stackoverflow.com/questions/57152199/value-at-index-is-null-error-when-using-pd-shift-inside-pandas-udf)
+
 Following code will cause errors:
 ```
 spark = SparkSession.builder.appName('test').getOrCreate()
@@ -62,4 +63,24 @@ The error:
 Caused by: java.lang.IllegalStateException: Value at index is null
 ```
 
-  
+- [Don't use aggregrate column to filter](https://stackoverflow.com/questions/57144409/filtering-a-dataframe-after-groupby-and-user-define-aggregate-function-in-pyspar)
+
+The current spark optimizer tries to optimize the execution plan, and place the filter right after the DataFrame is created. But the code there seems do not check for evaluation error, and will fail the whole program. To avoid such optimization, call `cache()` after you have generated the aggregrate column.
+
+This is the code that generates error
+```
+df = spark.createDataFrame([(1, 1.0), (1, 2.0), (2, 3.0), (2, 5.0), (2, 10.0)],("id", "v"))
+df.show()
+@pandas_udf("double", PandasUDFType.GROUPED_AGG)
+def mean_udf(v):
+    return v.mean()
+df = df.groupby("id").agg(mean_udf(df['v']).alias("mean"))
+# df.cache()  #without this line, there'll be errors
+df.filter(F.col("mean") > 5).show()
+```
+
+Errors caused by the `filter` operation
+```
+java.lang.UnsupportedOperationException: Cannot evaluate expression: mean_udf(input[1, double, true])
+```
+
