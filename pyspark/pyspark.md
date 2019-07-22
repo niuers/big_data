@@ -83,4 +83,5 @@ Errors caused by the `filter` operation
 ```
 java.lang.UnsupportedOperationException: Cannot evaluate expression: mean_udf(input[1, double, true])
 ```
+[A related issue with PySpark.](https://issues.apache.org/jira/browse/SPARK-17100)
 
