@@ -63,7 +63,7 @@ The error:
 Caused by: java.lang.IllegalStateException: Value at index is null
 ```
 
-- [Don't use aggregrate column to filter](https://stackoverflow.com/questions/57144409/filtering-a-dataframe-after-groupby-and-user-define-aggregate-function-in-pyspar)
+- [Don't do filter using aggregrate column](https://stackoverflow.com/questions/57144409/filtering-a-dataframe-after-groupby-and-user-define-aggregate-function-in-pyspar)
 
 The current spark optimizer tries to optimize the execution plan, and place the filter right after the DataFrame is created. But the code there seems do not check for evaluation error, and will fail the whole program. To avoid such optimization, call `cache()` after you have generated the aggregrate column.
 
