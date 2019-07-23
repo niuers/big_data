@@ -4,20 +4,29 @@
 > Apache Spark is an in-memory, cluster-based, unified analytics/computing engine and a set of libraries for large-scale parallel data processing.
 
 ### Characteristics of Apache Spark
-1. *Unified Data Analytics System*: It supports a wide range of data analytics tasks over the same computing engine and with a consistent set of APIs.
+1. *A Unified Data Analytics System*: supports a wide range of data analytics tasks over the same computing engine and with a consistent set of APIs.
    * Data loading
    * SQL queries
    * Machine learning
    * Streaming computation
-1. *Analytics/Computing Engine*: It's not a persistence store. Compare with Hadoop Architecture, which has HDFS as storage and MapReduce as computing engine.
+1. *An Analytics/Computing Engine not a Persistence Store*: Compare with Hadoop Architecture, which has HDFS as storage and MapReduce as computing engine.
 1. *Libraries*:
    * Spark Core
    * Spark SQL
    * MLlib
+   * SystemML
+   * SparkML (since 1.6.0)
    * Spark Streaming/Structured Streaming
    * GraphX
+   * DeepLearning4j
+   * H2O
 1. High Performance for both batch and streaming data: DAG scheduler, a query optimizer, and a physical execution engine. Spark is scalable, massively parallel, and in-memory execution.
-1. Ease of Use: Spark offers over 80 high-level operators that make it easy to build parallel apps. And you can use it interactively from the Scala, Python, R, and SQL shells.
+1. Ease of Use: Spark offers over 80 high-level operators that make it easy to build parallel apps and in various languages
+   * Scala
+   * Python
+   * Java
+   * R
+   * SQL
 1. Generality: SQL, Streaming, Graph and ML
 1. Runs Everywhere: Spark runs on Hadoop, Apache Mesos, Kubernetes, standalone, or in the cloud. It can access diverse data sources.
 1. Open Source
