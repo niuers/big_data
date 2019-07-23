@@ -14,12 +14,13 @@
    * Spark Core
    * Spark SQL
    * MLlib
-   * SystemML
    * SparkML (since 1.6.0)
    * Spark Streaming/Structured Streaming
    * GraphX
-   * DeepLearning4j
-   * H2O
+   * Third Party Libraries not shipped with Spark
+     * Apache SystemML
+     * DeepLearning4j
+     * H2O
 1. High Performance for both batch and streaming data: DAG scheduler, a query optimizer, and a physical execution engine. Spark is scalable, massively parallel, and in-memory execution.
 1. Ease of Use: Spark offers over 80 high-level operators that make it easy to build parallel apps and in various languages
    * Scala
@@ -27,7 +28,6 @@
    * Java
    * R
    * SQL
-1. Generality: SQL, Streaming, Graph and ML
 1. Runs Everywhere: Spark runs on Hadoop, Apache Mesos, Kubernetes, standalone, or in the cloud. It can access diverse data sources.
 1. Open Source
 
@@ -40,9 +40,98 @@ Internally, Spark uses an engine called **Catalyst** that maintains its own type
 Spark will convert an expression written in an input language (e.g. Python) to Spark's internal Catalyst representation of that same type 
 information. It then will operate on that internal representation.
 
+### The Spark Context
+> The Spark context, can be defined via a Spark configuration object and Spark URL. The Spark context connects to the Spark cluster manager.
+
+
+### JVM
+Java Virtual Machine (JVM) is a general-purpose byte code execution engine.
+
+* Note that the Executor and Driver have bidirectional communication all the time, so network-wise, they should also be sitting close together
+
+# Cluster Management
+## Edge Nodes
+> Edge nodes in the cluster will be client-facing, on which reside the client-facing components such as *Hadoop NameNode* or perhaps the *Spark master*. Majority of the big data cluster might be behind a firewall. The edge nodes would then reduce the complexity caused by the firewall as they would be the only points of contact accessible from outside.
+
+Generally, the edge nodes will need greater resources than the cluster processing nodes within the firewall. When many Hadoop ecosystem components are deployed on the cluster, all of them will need extra memory on the master server. You should monitor edge nodes for resource usage and adjust in terms of resources and/or application location as necessary. YARN, for instance, is taking care of this.
+
+## Cluster Manager
+> The Spark cluster manager allocates resources (e.g. executors) across the worker nodes for the application. It copies the application JAR file to the workers and finally allocates tasks.
+
+## Cluster Manager Options
+### Local Mode
+You can run spark application locally on a single machine.
+
+### Standalone Mode 
+This simple cluster manager currently supports only **FIFO (first-in first-out)** scheduling.
+
+### Apache YARN
+
+### Apache Mesos
+It allows multiple frameworks to share a cluster by managing and scheduling resources. 
+
+# Cloud Deployment
+## Three abstraction levels of cloud systems
+### Infrastructure as a Service (IaaS)
+The new way to do IaaS is Docker and Kubernetes, basically providing a way to automatically set up an Apache Spark cluster within minutes.
+
+### Platform as a Service (PaaS)
+PaaS takes away from you the burden of installing and operating an Apache Spark cluster because this is provided as a service.
+
+### Software as a Service (SaaS)
 
 
 
+
+1. Can be one of Standalone cluster manager, YARN, or Mesos etc.
+1. The manager starts a master and many worker nodes.
+1. When it comes time to actually run a Spark Application, we request resources from the cluster manager to run it. 
+Depending on how our application is configured, this can include a place to run the Spark driver or might be just resources for the executors for our Spark Application. 
+Over the course of Spark Application execution, the cluster manager will be responsible for managing the underlying machines that our application is running on.
+
+
+
+# Data APIs
+## RDD
+## DataFrame
+## Dataset
+> It unifies the RDD and DataFrame APIs. Datasets are statically typed and avoid runtime type errors. Therefore, Datasets can be used only with Java and Scala. 
+
+# Performance
+* [Spark Documentation](http://spark.apache.org/docs/latest/tuning.html)
+
+## The Cluster Structure
+* The size and structure of your big data cluster is going to affect performance. 
+* Shared vs. Unshared cluster: if you have a cloud-based cluster, your IO and latency will suffer in comparison to an unshared hardware cluster. 
+* The positioning of cluster components on servers may cause resource contention. 
+
+For instance, think carefully about locating Hadoop NameNodes, Spark servers, Zookeeper, Flume, and Kafka servers in large clusters. With high workloads, you might consider segregating servers to individual systems. You might also consider using an Apache system such as Mesos that provides better distributions and assignment of resources to the individual processes.
+
+* Potential parallelism. 
+
+The greater the number of workers in your Spark cluster for large Datasets, the greater the opportunity for parallelism. One rule of thumb is one worker per hyper-thread or virtual core respectively.
+
+## Alternatives to Hadoop Distributed File System (HDFS)
+* HDFS is designed as a write once, read many filesystem. It runs in a Java Virtual Machine (JVM) that in turn runs as an operating system process. IBM's GPFS (General Purpose File System) have improved performance on these aspects.
+* **Ceph** is an open source alternative to a distributed, fault-tolerant, and self-healing filesystem for commodity hard drives like HDFS.
+
+* **Cassandra** is not a filesystem but a NoSQL key value store and is tightly integrated with Apache Spark and is a valid and powerful alternative to HDFS--or even to any other distributed filesystem--especially as it supports predicate push-down using ApacheSparkSQL and the Catalyst optimizer.
+
+## Data Locality
+* The key for good data processing performance is avoidance of network transfers. This is less relevant for tasks with high demands on CPU and low I/O, but for low demand on CPU and high I/O demand data processing algorithms, this still holds.
+* HDFS is one of the best ways to achieve data locality as chunks of files are distributed on the cluster nodes, in most of the cases, using hard drives directly attached to the server systems. This means that those chunks can be processed in parallel using the CPUs on the machines where individual data chunks are located in order to avoid network transfer.
+
+* Another way to achieve data locality is using ApacheSparkSQL. Depending on the connector implementation, SparkSQL can make use of data processing capabilities of the source engine. So for example when using MongoDB in conjunction with SparkSQL parts of the SQL statement are preprocessed by MongoDB before data is sent upstream to Apache Spark.
+
+
+
+
+# Project Tungsten
+
+
+# The Catalyst Optimizer
+### Idea
+> Catalyst creates a **Logical Execution Plan (LEP)** from a SQL query and optimizes this LEP to create multiple **Physical Execution Plans (PEPs)**. Based on statistics, Catalyst chooses the best PEP to execute. This is very similar to **cost-based optimizers** in **Relational Data Base Management Systems (RDBMs)**.
 
 
 
@@ -52,3 +141,4 @@ information. It then will operate on that internal representation.
 
 # References
 1. [Spark Internals](https://github.com/JerryLead/SparkInternals)
+2. Mastering Apache Spark
