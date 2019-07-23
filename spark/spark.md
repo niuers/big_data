@@ -123,8 +123,21 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 
 * Another way to achieve data locality is using ApacheSparkSQL. Depending on the connector implementation, SparkSQL can make use of data processing capabilities of the source engine. So for example when using MongoDB in conjunction with SparkSQL parts of the SQL statement are preprocessed by MongoDB before data is sent upstream to Apache Spark.
 
+## Memory
+* Consider the level of physical memory available on your Spark worker nodes. Can it be increased? Check on the memory consumption of operating system processes during high workloads in order to get an idea of free memory. Make sure that the workers have enough memory.
+* Consider data partitioning. Can you increase the number of partitions? As a rule of thumb, you should have at least as many partitions as you have available CPU cores on the cluster. Use the repartition function on the RDD API.
+* Can you modify the storage fraction and the memory used by the JVM for storage and caching of RDDs? Workers are competing for memory against data storage. Use the Storage page on the Apache Spark user interface to see if this fraction is set to an optimal value. Then update the following properties:
+  * spark.memory.fraction
+  * spark.memory.storageFraction
+  * spark.memory.offHeap.enabled=true
+  * spark.memory.offHeap.size
+  
+* Consider using Parquet as a storage format, which is much more storage effective than CSV or JSON
+* Consider using the DataFrame/Dataset API instead of the RDD API as it might resolve in more effective executions
 
-
+## Coding
+* Filter your application-based data early in your ETL cycle. 
+* 
 
 # Project Tungsten
 
@@ -141,4 +154,4 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 
 # References
 1. [Spark Internals](https://github.com/JerryLead/SparkInternals)
-2. Mastering Apache Spark
+2. Mastering Apache Spark 2.x - 2nd Edition
