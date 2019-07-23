@@ -118,3 +118,9 @@ This outputs:
 ```
 final: [('0', '00')]
 ```
+
+- [Use Select to Re-Order DataFrame Columns](https://stackoverflow.com/questions/42912156/python-pyspark-data-frame-rearrange-columns)
+
+```
+df.select([col1, col2, col3]).show()
+```
