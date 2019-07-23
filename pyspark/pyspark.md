@@ -85,3 +85,34 @@ java.lang.UnsupportedOperationException: Cannot evaluate expression: mean_udf(in
 ```
 [A related issue with PySpark.](https://issues.apache.org/jira/browse/SPARK-17100)
 
+- [Don't use for-loop](https://stackoverflow.com/questions/57154430/how-to-apply-multiple-filters-in-a-for-loop-for-pyspark)
+Use for-loop to iterate transformations on a DataFrame or RDD is a bad idea. `Code1` and `Code2` below give two different results.
+```
+# Code 1
+test_input = [('0', '00'), ('1', '1'), ('', '22'), ('', '3')]
+rdd = sc.parallelize(test_input, 1)
+
+# Index 0 needs to be longer than length 0
+# Index 1 needs to be longer than length 1
+for i in [0,1]:
+    rdd = rdd.filter(lambda arr: len(arr[i]) > i)   
+
+print('final: ', rdd.collect())
+```
+This outputs
+```
+final:  [('0', '00'), ('', '22')]
+```
+
+```
+# Code2
+test_input = [('0', '00'), ('1', '1'), ('', '22'), ('', '3')]
+rdd = sc.parallelize(test_input, 1)
+rdd = rdd.filter(lambda arr: len(arr[0]) > 0)
+rdd = rdd.filter(lambda arr: len(arr[1]) > 1)
+print('final: ', rdd.collect())
+```
+This outputs:
+```
+final: [('0', '00')]
+```
