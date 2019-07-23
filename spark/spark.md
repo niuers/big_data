@@ -98,7 +98,6 @@ Over the course of Spark Application execution, the cluster manager will be resp
 > It unifies the RDD and DataFrame APIs. Datasets are statically typed and avoid runtime type errors. Therefore, Datasets can be used only with Java and Scala. 
 
 # Performance
-* [Spark Documentation](http://spark.apache.org/docs/latest/tuning.html)
 
 ## The Cluster Structure
 * The size and structure of your big data cluster is going to affect performance. 
@@ -137,7 +136,8 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 
 ## Coding
 * Filter your application-based data early in your ETL cycle. 
-* 
+
+## [Spark Documentation](http://spark.apache.org/docs/latest/tuning.html)
 
 # Project Tungsten
 
