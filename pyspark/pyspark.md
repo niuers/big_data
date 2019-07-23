@@ -88,7 +88,7 @@ java.lang.UnsupportedOperationException: Cannot evaluate expression: mean_udf(in
 - [Don't use for-loop](https://stackoverflow.com/questions/57154430/how-to-apply-multiple-filters-in-a-for-loop-for-pyspark)
 
 Use for-loop to iterate transformations on a DataFrame or RDD is a bad idea. `Code1` and `Code2` below give two different results.
-
+This might be related to [closures](https://spark.apache.org/docs/2.2.1/rdd-programming-guide.html#understanding-closures-).
 ```
 # Code 1
 test_input = [('0', '00'), ('1', '1'), ('', '22'), ('', '3')]
