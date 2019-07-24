@@ -58,9 +58,21 @@ information. It then will operate on that internal representation.
 ### Projection
 > It means to use the DataFrame's select method to filter columns from the data. In SQL or relational algebra, this is called projection.
 
+### Task
+> Stages in Spark consist of tasks. Each task corresponds to a combination of blocks of data and a set of transformations that will run on a single executor. 
+
+* For a Spark application, a task is the smallest unit of work that Spark sends to an executor
+
+* If there is one big partition in our dataset, we will have one task. If there are 1,000 little partitions, we will have 1,000 tasks that can be executed in parallel. A task is just a unit of computation applied to a unit of data (the partition). Partitioning your data into a greater number of partitions means that more can be executed in parallel. This is not a panacea, but it is a simple place to begin with optimization
+
+* A task's execution time can be broken up as Scheduler Delay + Deserialization Time + Shuffle Read Time (optional) + Executor Runtime + Shuffle Write Time (optional) + Result Serialization Time + Getting Result Time.
+
+
+
 
 ### Partitions
 http://stackoverflow.com/questions/10666488/what-are-success-and-part-r-00000-files-in-hadoop
+https://www.ibm.com/support/knowledgecenter/en/SSZU2E_2.3.0/performance_tuning/application_spark_parameters.html
 
 ### JVM
 Java Virtual Machine (JVM) is a general-purpose byte code execution engine.
