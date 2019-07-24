@@ -43,6 +43,24 @@ information. It then will operate on that internal representation.
 ### The Spark Context
 > The Spark context, can be defined via a Spark configuration object and Spark URL. The Spark context connects to the Spark cluster manager.
 
+### SparkSession
+> SparkSession is created from the Spark context and provides the means to load and save data files of different types using DataFrames and Datasets and manipulate columnar data with SQL, among other things. It can be used for the following functions:
+
+* Executing SQL via the sql method
+* Registering user-defined functions via the udf method
+* Caching
+* Creating DataFrames
+* Creating Datasets
+
+### Apache Parquet
+> It is another columnar-based data format used by many tools in the Hadoop ecosystem, such as Hive, Pig, and Impala. It increases performance using efficient compression, columnar layout, and encoding routines.
+
+### Projection
+> It means to use the DataFrame's select method to filter columns from the data. In SQL or relational algebra, this is called projection.
+
+
+### Partitions
+http://stackoverflow.com/questions/10666488/what-are-success-and-part-r-00000-files-in-hadoop
 
 ### JVM
 Java Virtual Machine (JVM) is a general-purpose byte code execution engine.
@@ -92,9 +110,11 @@ Over the course of Spark Application execution, the cluster manager will be resp
 
 
 # Data APIs
-## RDD
-## DataFrame
-## Dataset
+### RDD
+### DataFrame
+> DataFrames are columnar data storage structures roughly equivalent to relational database tables. 
+
+### Dataset
 > It unifies the RDD and DataFrame APIs. Datasets are statically typed and avoid runtime type errors. Therefore, Datasets can be used only with Java and Scala. 
 
 # Performance
