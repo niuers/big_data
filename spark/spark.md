@@ -99,7 +99,7 @@ Over the course of Spark Application execution, the cluster manager will be resp
 
 # Performance
 
-## The Cluster Structure
+### The Cluster Structure
 * The size and structure of your big data cluster is going to affect performance. 
 * Shared vs. Unshared cluster: if you have a cloud-based cluster, your IO and latency will suffer in comparison to an unshared hardware cluster. 
 * The positioning of cluster components on servers may cause resource contention. 
@@ -110,19 +110,19 @@ For instance, think carefully about locating Hadoop NameNodes, Spark servers, Zo
 
 The greater the number of workers in your Spark cluster for large Datasets, the greater the opportunity for parallelism. One rule of thumb is one worker per hyper-thread or virtual core respectively.
 
-## Alternatives to Hadoop Distributed File System (HDFS)
+### Alternatives to Hadoop Distributed File System (HDFS)
 * HDFS is designed as a write once, read many filesystem. It runs in a Java Virtual Machine (JVM) that in turn runs as an operating system process. IBM's GPFS (General Purpose File System) have improved performance on these aspects.
 * **Ceph** is an open source alternative to a distributed, fault-tolerant, and self-healing filesystem for commodity hard drives like HDFS.
 
 * **Cassandra** is not a filesystem but a NoSQL key value store and is tightly integrated with Apache Spark and is a valid and powerful alternative to HDFS--or even to any other distributed filesystem--especially as it supports predicate push-down using ApacheSparkSQL and the Catalyst optimizer.
 
-## Data Locality
+### Data Locality
 * The key for good data processing performance is avoidance of network transfers. This is less relevant for tasks with high demands on CPU and low I/O, but for low demand on CPU and high I/O demand data processing algorithms, this still holds.
 * HDFS is one of the best ways to achieve data locality as chunks of files are distributed on the cluster nodes, in most of the cases, using hard drives directly attached to the server systems. This means that those chunks can be processed in parallel using the CPUs on the machines where individual data chunks are located in order to avoid network transfer.
 
 * Another way to achieve data locality is using ApacheSparkSQL. Depending on the connector implementation, SparkSQL can make use of data processing capabilities of the source engine. So for example when using MongoDB in conjunction with SparkSQL parts of the SQL statement are preprocessed by MongoDB before data is sent upstream to Apache Spark.
 
-## Memory
+### Memory
 * Consider the level of physical memory available on your Spark worker nodes. Can it be increased? Check on the memory consumption of operating system processes during high workloads in order to get an idea of free memory. Make sure that the workers have enough memory.
 * Consider data partitioning. Can you increase the number of partitions? As a rule of thumb, you should have at least as many partitions as you have available CPU cores on the cluster. Use the repartition function on the RDD API.
 * Can you modify the storage fraction and the memory used by the JVM for storage and caching of RDDs? Workers are competing for memory against data storage. Use the Storage page on the Apache Spark user interface to see if this fraction is set to an optimal value. Then update the following properties:
@@ -134,10 +134,10 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 * Consider using Parquet as a storage format, which is much more storage effective than CSV or JSON
 * Consider using the DataFrame/Dataset API instead of the RDD API as it might resolve in more effective executions
 
-## Coding
+### Coding
 * Filter your application-based data early in your ETL cycle. 
 
-## [Spark Documentation](http://spark.apache.org/docs/latest/tuning.html)
+### [Spark Documentation](http://spark.apache.org/docs/latest/tuning.html)
 
 # Project Tungsten
 
