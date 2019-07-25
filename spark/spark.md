@@ -55,6 +55,11 @@ information. It then will operate on that internal representation.
 ### Apache Parquet
 > It is another columnar-based data format used by many tools in the Hadoop ecosystem, such as Hive, Pig, and Impala. It increases performance using efficient compression, columnar layout, and encoding routines.
 
+> Smart data sources are those that support data processing directly in their own engine--where the data resides--by preventing unnecessary data to be sent to Apache Spark.
+
+* The Parquet files are smart data sources, since projection and filtering can be performed at the storage level, eliminating disk reads of unnecessary data. 
+* This can be seen in the PushedFilters and ReadSchema sections in the explained plan, where the IsNotNull operation and the ReadSchema projection on id, clientId, and familyName is directly performed at the read level of the Parquet files.
+
 ### Projection
 > It means to use the DataFrame's select method to filter columns from the data. In SQL or relational algebra, this is called projection.
 
@@ -122,12 +127,39 @@ Over the course of Spark Application execution, the cluster manager will be resp
 
 
 # Data APIs
+### SQL
+* Since Apache Spark 2.0, the catalog API is used to create and remove temporary views from an internal meta store. This is necessary if you want to use SQL, because it basically provides the mapping between a virtual table name and a DataFrame or Dataset.
+
+* Temporary views are stored in the SparkSession object, as persistent tables are stored in an external metastore.
+
+* 
+
 ### RDD
+
+* RDD is still the central data processing API where everything else (DataFrame, DataSet) builds on top. 
+
+* RDD is discouraged to use unless there is a strong reason to do so for the following reasons:
+  * RDDs, on an abstraction level, are equivalent to assembler or machine code when it comes to system programming
+  * RDDs express how to do something and not what is to be achieved, leaving no room for optimizers
+  * RDDs have proprietary syntax; SQL is more widely known
+
 ### DataFrame
-> DataFrames are columnar data storage structures roughly equivalent to relational database tables. 
+> DataFrames are columnar data storage structures roughly equivalent to relational database tables. It allows for structured data APIs.
 
 ### Dataset
-> It unifies the RDD and DataFrame APIs. Datasets are statically typed and avoid runtime type errors. Therefore, Datasets can be used only with Java and Scala. 
+> It unifies the RDD and DataFrame APIs. It is basically a strongly typed version of DataFrames. Datasets are **statically typed** and avoid runtime type errors. 
+
+* Static types allow for a lot of further performance optimization and also adds compile type safety to your applications.
+
+* A DataFrame since Apache Spark 2.0 is nothing else but a **Dataset where the type is set to Row**. A DataFrame-equivalent Dataset would contain only elements of the Row type. This means that you actually lose the strongly static typing and fall back to a dynamic typing. Note that the difference between Datasets and DataFrame is that the Row objects are not static types as the schema can be created during runtime by passing it to the constructor using StructType objects.
+
+* Datasets can be used only with Java and Scala. Dynamically typed languages such as Python or R are not capable of using Datasets because there isn't a concept of strong, static types in the language. 
+
+* Both APIs (DataFrame and DataSet) are usable with SQL or a relational API. 
+
+### Summary
+* The DataFrame and DataSet APIs are much faster than RDDs because Apache SparkSQL provides such dramatic performance improvements over the RDD API.
+* Whenever possible, use Datasets because their static typing makes them faster. As long as you are using statically typed languages such as Java or Scala, you are fine. Otherwise, you have to stick with DataFrames.
 
 # Performance
 
@@ -175,8 +207,55 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 
 
 # The Catalyst Optimizer
+
 ### Idea
 > Catalyst creates a **Logical Execution Plan (LEP)** from a SQL query and optimizes this LEP to create multiple **Physical Execution Plans (PEPs)**. Based on statistics, Catalyst chooses the best PEP to execute. This is very similar to **cost-based optimizers** in **Relational Data Base Management Systems (RDBMs)**.
+
+* Catalyst takes your high-level program and transforms it into efficient calls on top of the RDD API.
+
+### Catalyst Optimization Procedure
+
+* First of all, it has to be understood that it doesn't matter if a DataFrame, the Dataset API, or SQL is used. The Apache Spark SQL parser returns an **abstract syntax tree (AST)**. They all result in the same tree-based structure called **Unresolved Logical Execution Plan (ULEP)**. The ULEP basically reflects the structure of an AST.
+
+> A QueryPlan is unresolved if the column names haven't been verified and the column types haven't been looked up in the catalog. 
+
+* ULEP is mainly composed of sub-types of the **LeafExpression** objects, which are bound together by the **Expression** objects, therefore forming a tree of the **TreeNode** objects since all these objects are sub-types of **TreeNode**. Overall, this data structure is a **LogicalPlan**, which is therefore reflected as a **LogicalPlan** object. Note that **LogicalPlan** extends **QueryPlan**, and **QueryPlan** itself is **TreeNode** again. In other words, **LogicalPlan** is nothing else than a set of **TreeNode** objects.
+
+* From ULEP to RLEP
+  * The first thing that is checked is if the referred relations exist in the catalog. This means all table names and fields expressed in the SQL statement or relational API have to exist. 
+  * If the table (or relation) exists, the column names are verified. 
+  * In addition, the column names that are referred to multiple times are given an alias in order to read them only once. This is already a first stage optimization taking place here. 
+  * Finally, the data types of the columns are determined in order to check if the operations expressed on top of the columns are valid. So for example taking the sum of a string doesn't work and this error is already caught at this stage. 
+  * The result of this operation is a Resolved Logical Execution Plan (LEP).
+
+* A **Resolved Logical Execution Plan (RLEP)** is then transformed multiple times, until it results in an Optimized Logical Execution Plan. LEPs don't contain a description of how something is computed, but only what has to be computed. 
+
+* How to optimized the RLEP?
+  * This is done using a set of transformation rules. Since a LEP is just a tree, the rules transform from one tree to another. This is done iteratively until no rule fires anymore and keeps the LEP stable and the process is finished. The result of this step is an **Optimized Logical Execution Plan**.
+
+* The **optimized LEP** is transformed into multiple **Physical Execution Plans (PEP)** using so-called strategies.
+  * PEPs are execution plans that have been completely resolved. This means that a PEP contains detailed instructions to generate the desired result. 
+  * Strategies are used to optimize selection of join algorithms based on statistics. In addition, rules are executed for example to pipeline multiple operations on an RDD into a single, more complex operation.
+  * The multiple PEPs all will return the exact same result.
+
+* An optimal PEP is selected to be executed using a cost model (to minimize execution time) by taking statistics and heuristics about the Dataset to be queried into account. 
+  * In case the data source supports it, operations are pushed down to the source, namely for filtering (predicate) or selection of attributes (projection).
+  * The main idea of predicate push-down is that parts of the AST are not executed by Apache Spark but by the data source itself. So for example filtering rows on column names can be done much more efficient by a relational or NoSQL database since it sits closer to the data and therefore can avoid data transfers between the database and Apache Spark. Also, the removal of unnecessary columns is a job done more effectively by the database.
+
+* Code Generation
+  * Since Apache Spark runs on the **Java Virtual Machine (JVM)**, this allows byte code to be created and modified during runtime and optimized more.
+  * Normally, an expression (e.g. 'a+b') had to be **interpreted** by the JVM for each row of the Dataset. It would be nice if we could generate the JVM ByteCode for this expression on the fly such that less code has to be interpreted, which speeds things up. 
+  * This is possible using a Scala feature called **Quasiquotes**, which basically allows an arbitrary string containing Scala code to be compiled into ByteCode on the fly, if it starts with `q`.
+  
+* Example of Join
+  * BroadCastHashJoin, but in reality, is a join spans partitions over - potentially - multiple physical nodes. Therefore, the two tree branches are executed in parallel and the results are shuffled over the cluster using hash bucketing based on the join predicate.
+  * 
+
+
+
+* Note that the final execution takes place on RDD objects.
+
+### Put the picture of execution plan transformation here
 
 
 
