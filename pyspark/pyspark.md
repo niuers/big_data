@@ -1,3 +1,12 @@
+## [Groupby and Apply on DataFrame]
+
+```
+from pyspark.sql import functions as F
+df.groupBy(["ID", "Amount"]).agg(F.countDistinct(df['d']).alias('count_d')).show()
+df.groupBy(["ID", "Amount"]).agg({"d": "count", "Amount":"max"}).show()
+
+```
+
 ## [Apply a user defined function to create a new column](https://stackoverflow.com/questions/57095416/what-is-wrong-with-this-function-on-pyspark/57097490#57097490)
 ```
 from pyspark.sql import functions as F
