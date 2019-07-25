@@ -1,4 +1,4 @@
-## [Groupby and Apply on DataFrame]
+## Groupby and Apply on DataFrame
 
 ```
 from pyspark.sql import functions as F
