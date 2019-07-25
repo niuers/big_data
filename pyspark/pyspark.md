@@ -1,3 +1,35 @@
+## Construct a DataFrame
+* Use a list `Row`s
+
+```
+spark = SparkSession.builder.appName('test').getOrCreate()
+df = spark.createDataFrame([Row(ID=10001, day='2019-05-01', value=70),
+                            Row(ID=10002, day='2019-06-01', value=20),
+                            Row(ID=10003, day='2019-07-01', value=35)
+                           ]).show()
+
+```
+
+* Use a list of tuples and a list of column names
+
+```
+values = [
+('05/25/2018', 'a', 37,  12),
+('04/15/2018', 'a', 29,  13),
+('12/18/2017', 'b', 17,  14),
+('07/28/2017', 'a', 10,  23),
+('01/01/2018', 'b', 12,  33)
+]
+columns = ['Date', 'Name','Count', 'ID']
+df=spark.createDataFrame(values, columns).show()
+```
+
+* use a list of tuples without column names
+```
+df = spark.createDataFrame([(1, 5, 3), (1,2,6),(2, 3,1), (2,1,-1)] )
+```
+
+
 ## Groupby and Apply on DataFrame
 
 ```
