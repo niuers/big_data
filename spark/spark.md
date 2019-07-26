@@ -1,7 +1,7 @@
 
 ##### Table of Contents
 * [Concepts](#concepts)
-  * [What is Apache Spark?](###what-is-apache-spark?)
+  * [What is Apache Spark?](#what-is-apache-spark)
 * [Cluster Management](#cluster-management)
 * [Cloud Deployment](#cloud-deployment)
 * [Data APIs](#data-apis)
