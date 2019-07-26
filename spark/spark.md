@@ -290,10 +290,17 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 * All regions, and also the contained fields within the regions, are 8-byte aligned. Therefore, individual chunks of data perfectly fit into 64 bit CPU registers. This way, a compare operation can be done in a single machine instruction only. In addition, 8-byte stride memory access patterns are very cache-friendly.
   
 #### The Null Bit Set Region
+
 * In this region, for each field contained in the row, a bit is reserved to indicate whether it contains a null value or not. This is very useful for filtering, because only the bit set has to be read from memory, omitting the actual values. The number of fields and the size of this region are reflected as individual properties in the org.apache.spark.sql.catalyst.expressions.UnsafeRow object. Therefore, this region can be of variable size as well, which is an implicit requirement since the number of fields varies as well.
 
+#### The Fixed Length Values Region
 
+* This region stores two things. 
+  * Values fitting into the 8 bytes - called fixed length values like long, double, or int
+  * In the event the value of a particular field doesn't fit into that chunk only a pointer or a reference is stored. This reference points to a byte offset in the variable length values region. In addition to the pointer, the length (in bytes) of that field is also stored. Both integer values are combined into a long value. This way, two 4-byte integer values are stored in one 8-byte field. Again, since the number of fields is known, this region is of variable length and reserves 8 bytes for each field.
 
+#### The Variable Length Values Region
+* It contains variable-sized fields like strings.
 
 
 
