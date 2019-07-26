@@ -1,5 +1,5 @@
 
-##### Table of Contents
+## Table of Contents
 * [Concepts](#concepts)
   * [What is Apache Spark?](#what-is-apache-spark)
 * [Cluster Management](#cluster-management)
