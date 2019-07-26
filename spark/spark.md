@@ -52,16 +52,25 @@ information. It then will operate on that internal representation.
 * Creating DataFrames
 * Creating Datasets
 
-### Apache Parquet
+### Smart Data Sources
+
+> Smart data sources are those that support data processing directly in their own engine--where the data resides--by preventing unnecessary data to be sent to Apache Spark. 
+
+#### Apache Spark MongoDB
+
+* One example is a relational SQL database with a smart data source. Data locality is made use of by letting the SQL database do the filtering of rows based on conditions. This is implemented in a Apache Spark MongoDB connector. The connector class needs implement the **PrunedFilteredScan** trait adding the **buildScan** method in order to support filtering on the data source itself. The code can remove columns and rows directly using the MongoDB API.
+
+* This means that if in a PEP data has to be filtered, then this filter will be executed in the SQL statement on the RDBMS when the underlying data is read. This way, reading unnecessary data is avoided.
+
+#### Apache Parquet
 > It is another columnar-based data format used by many tools in the Hadoop ecosystem, such as Hive, Pig, and Impala. It increases performance using efficient compression, columnar layout, and encoding routines.
 
-> Smart data sources are those that support data processing directly in their own engine--where the data resides--by preventing unnecessary data to be sent to Apache Spark.
+* The Parquet files are **smart data sources**, since projection and filtering can be performed at the storage level, eliminating disk reads of unnecessary data. 
 
-* The Parquet files are smart data sources, since projection and filtering can be performed at the storage level, eliminating disk reads of unnecessary data. 
-* This can be seen in the PushedFilters and ReadSchema sections in the explained plan, where the IsNotNull operation and the ReadSchema projection on id, clientId, and familyName is directly performed at the read level of the Parquet files.
+* This can be seen in the **PushedFilters** and **ReadSchema** sections in the explained plan, where the **IsNotNull** operation and the **ReadSchema** projection on id, clientId, and familyName is directly performed at the read level of the Parquet files.
 
 ### Projection
-> It means to use the DataFrame's select method to filter columns from the data. In SQL or relational algebra, this is called projection.
+> It means to use the DataFrame's select method to filter **columns** from the data. In SQL or relational algebra, this is called projection.
 
 ### Task
 > Stages in Spark consist of tasks. Each task corresponds to a combination of blocks of data and a set of transformations that will run on a single executor. 
@@ -78,6 +87,8 @@ information. It then will operate on that internal representation.
 ### Partitions
 http://stackoverflow.com/questions/10666488/what-are-success-and-part-r-00000-files-in-hadoop
 https://www.ibm.com/support/knowledgecenter/en/SSZU2E_2.3.0/performance_tuning/application_spark_parameters.html
+
+
 
 ### JVM
 Java Virtual Machine (JVM) is a general-purpose byte code execution engine.
@@ -114,7 +125,6 @@ The new way to do IaaS is Docker and Kubernetes, basically providing a way to au
 PaaS takes away from you the burden of installing and operating an Apache Spark cluster because this is provided as a service.
 
 ### Software as a Service (SaaS)
-
 
 
 
@@ -203,9 +213,6 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 
 ### [Spark Documentation](http://spark.apache.org/docs/latest/tuning.html)
 
-# Project Tungsten
-
-
 # The Catalyst Optimizer
 
 ### Idea
@@ -249,13 +256,41 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
   
 * Example of Join
   * BroadCastHashJoin, but in reality, is a join spans partitions over - potentially - multiple physical nodes. Therefore, the two tree branches are executed in parallel and the results are shuffled over the cluster using hash bucketing based on the join predicate.
-  * 
-
 
 
 * Note that the final execution takes place on RDD objects.
 
 ### Put the picture of execution plan transformation here
+
+
+# Project Tungsten
+> Project Tungsten is the core of the Apache Spark execution engine, aims at improving performance at the CPU and main memory level. 
+
+
+## JVM and Garbage Collection (GC)
+* The JVM Garbage Collector is in support of the whole object's life cycle management the JVM provides. Whenever you see the word new in Java code, memory is allocated in a JVM memory segment called heap.
+
+* Java completely takes care of memory management and it is impossible to overwrite memory segments that do not belong to you (or your object). So if you write something to an object's memory segment on the heap (for example by updating a class property value of type Integer, you are changing 32 bit on the heap) you don't use the actual heap memory address for doing so but you use the reference to the object and either access the object's property or use a setter method.
+
+* How to free up memory in Java? Java Garbage collector continuously monitors how many active references to a certain object on the heap exist and once no more references exist those objects are destroyed and the allocated memory is freed.
+
+* References to an object can either exist within objects on the heap itself or in the stack. The stack is a memory segment where variables in method calls and variables defined within methods reside. They are usually short lived whereas data on the heap might live for longer.
+
+* The Garbage Collector is a highly complex component and has been optimized to support **Online Transaction Processing (OLTP)** workloads whereas Apache Spark concentrates on **Online Analytical Processing (OLAP)**. There is a clash between optimizing a garbage collector for both disciplines at the same time since the object life cycle is very different between those two disciplines.
+
+## Tungsten
+* The main idea behind Tungsten is to get rid of the JVM Garbage Collector. Tungsten bypasses the managed (and safe) memory management system which the JVM provides and uses the classes from the sun.misc.Unsafe package, which allows Tungsten to manage memory layout on its behalf.
+
+### UnsafeRow Object
+* Tungsten uses org.apache.spark.sql.catalyst.expressions.UnsafeRow, which is a binary representation of a row object. An UnsafeRow object consists of three regions.
+  * Null bit set
+  * Values (fixed length)
+  * Values (variable length)
+  
+* All regions, and also the contained fields within the regions, are 8-byte aligned. Therefore, individual chunks of data perfectly fit into 64 bit CPU registers. This way, a compare operation can be done in a single machine instruction only. In addition, 8-byte stride memory access patterns are very cache-friendly.
+  
+#### The Null Bit Set Region
+* In this region, for each field contained in the row, a bit is reserved to indicate whether it contains a null value or not. This is very useful for filtering, because only the bit set has to be read from memory, omitting the actual values. The number of fields and the size of this region are reflected as individual properties in the org.apache.spark.sql.catalyst.expressions.UnsafeRow object. Therefore, this region can be of variable size as well, which is an implicit requirement since the number of fields varies as well.
 
 
 
