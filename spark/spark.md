@@ -164,7 +164,11 @@ Over the course of Spark Application execution, the cluster manager will be resp
   * RDDs have proprietary syntax; SQL is more widely known
 
 ### DataFrame
-> DataFrames are columnar data storage structures roughly equivalent to relational database tables. It allows for structured data APIs.
+> DataFrames are columnar data storage structures roughly equivalent to relational database tables, which is backed by a RDD[Row] object. It allows for structured data APIs.
+
+* Unfortunately, while the wrapping of values into the Row objects has advantages for memory consumption (less memory footprint than RDD), it has disadvantages for execution performance (Probably longer execution time than RDD). Fortunately, when using Datasets, this performance loss is mitigated and we can take advantage of both the fast execution time and the efficient usage of memory.
+
+* Why are we using DataFrames and Datasets at all if RDDs are faster? We could also just put additional memory to the cluster. Note that although this particular execution (cache a list of integers and count) on an RDD runs faster, Apache Spark jobs are very rarely composed only out of a single operation on an RDD. In theory you could write very efficient Apache Spark jobs on RDDs only, but actually re-writing your Apache Spark application for performance tuning will take a lot of time. So the best way is to use DataFrames and Datasets, to make use of the Catalyst optimizer, in order to get efficient calls to the RDD operations generated.
 
 ### Dataset
 > It unifies the RDD and DataFrame APIs. It is basically a strongly typed version of DataFrames. Datasets are **statically typed** and avoid runtime type errors. 
@@ -312,8 +316,77 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 #### The Variable Length Values Region
 * It contains variable-sized fields like strings.
 
+### BytesToBytesMap
+#### Drawbacks of java.util.HashMap
+* Memory overhead due to usage of objects as keys and values
+* Very cache-unfriendly memory layout
+* Impossible to directly address fields by calculating offsets
+
+This means that simple but important things, such as sequential scans, result in very random and cache-unfriendly memory access patterns. Therefore, Tungsten has introduced a new data structure called BytesToBytesMap, which has improved the memory locality and has led to less space overhead by avoiding the usage of heavyweight Java objects, which has improved performance. Sequential scans are very cache friendly, since they access the memory in sequence.
+
+### Cache-Friendly Memory Layout of Data
+* Memory on a modern computer system is addressed using 64 bit addresses pointing to 64 bit memory blocks. Remember, Tungsten tries to always use 8-byte Datasets which perfectly fit into these 64-bit memory blocks.
+
+* So between your CPU cores and main memory, there is a hierarchical list of L1, L2, and L3 caches-with increasing size. Usually, L3 is shared among all the cores. If your CPU core requests a certain main memory address to be loaded into the CPU core's register (a register is a memory area in your CPU core) - this happens by an explicit machine code (assembler) instruction - then first the L1-3 cache hierarchy is checked to see if it contains the requested memory address.
+
+* We call data associated with such an address a memory page. If this is the case, then main memory access is omitted and the page is directly loaded from the L1, L2, or L3 cache. Otherwise, the page is loaded from main memory, resulting in higher latency. The latency is so high that the CPU core is waiting (or executing other work) for multiple CPU clock cycles, until the main memory page is transferred into the CPU core's register. In addition, the page is also put into all caches, and in case they are full, less frequently accessed memory pages are deleted from the caches.
+
+* This brings us to the following two conclusions:
+
+  * Caching only makes sense if memory pages are accessed multiple times during a computation.
+  * Since caches are far smaller than main memory, they only contain subsets of the main memory pages. Therefore, a temporally close access pattern is required in order to benefit from the caches, because if the same page is accessed at a very late stage of the computation, it might have already gotten evicted from the cache.
+
+#### Cache Eviction Strategies and Pre-fetching
+
+* Modern computer systems not only use **least recently used (LRU)** memory page eviction strategies to delete cached memory pages from the caches, they also try to predict the access pattern in order to keep the memory pages that are old but have a high probability of being requested again. 
+* Modern CPUs also try to predict future memory page requests and try to pre-fetch them. 
+* Nevertheless, random memory access patterns should always be avoided and the more sequential memory access patterns are, usually the faster they are executed.
+
+#### So how can we avoid random memory access patterns? 
+* A side-effect of hashing is that even close by key values, such as subsequent integer numbers, result in different hash codes and therefore end up in different buckets. Each bucket can be seen as a pointer pointing to a linked list of key-value pairs stored in the map. These pointers point to random memory regions (Java Heap). Therefore, sequential scans are impossible.
+
+* In order to improve sequential scans, Tungsten does the following trick: the pointer not only stores the target memory address of the value, but also the key. This way, the keys are stored sequentially together with pointers.
+
+* We have learned about this concept already, where an 8-byte memory region is used to store two integer values, for example, in this case the key and the pointer to the value. This way, one can run a sorting algorithm with sequential memory access patterns (for example, quick-sort). 
+
+* This way, when sorting, the key and pointer combination memory region must be moved around but the memory region where the values are stored can be kept constant. While the values can still be randomly spread around the memory, the key and pointer combination are sequentially laid out.
+
+### Code Generation
+
+#### JVM
+* Every class executed on the JVM is byte-code. This is an intermediate abstraction layer to the actual machine code specific for each different micro-processor architecture. This is the major selling point for Java.
+
+* The basic workflow is:
+  * Java source code gets compiled into Java byte-code.
+  * Java byte-code gets interpreted by the JVM.
+  * The JVM translates this byte-code and issues platform specific-machine code instructions to the target CPU.
+
+* Tungsten actually transforms an expression into byte-code and have it shipped to the executor thread, instead of make the Java Virtual Machine to execute (interpret) this expression one billion times, which is a huge overhead.
+
+* These days nobody ever thinks of creating byte-code on the fly, but this is what's happening in code generation. Apache Spark Tungsten analyzes the task to be executed and instead of relying on chaining pre-compiled components it generates specific, high-performing byte code as written by a human to be executed by the JVM.
+
+* Another thing Tungsten does is to accelerate the serialization and deserialization of objects, because the native framework that the JVM provides tends to be very slow. Since the main bottleneck on every distributed data processing system is the shuffle phase (used for sorting and grouping similar data together), where data gets sent over the network in Apache Spark, object serialization and deserialization are the main contributor to the bottleneck (and not I/O bandwidth), also adding to the CPU bottleneck. Therefore increasing performance here reduces the bottleneck.
+
+### Columnar Storage
+* Many on-disk technologies, such as parquet, or relational databases, such as IBM DB2 BLU or dashDB, support it.
+* In contrast to row-based layouts (i.e. normal table layout, each line is a row), where fields of individual records are memory-aligned close together, in columnar storage (transpose of row-based table, each line is a column) values from similar columns of different records are residing close together in memory. This changes performance significantly. Not only can columnar data such as parquet be read faster by an order of magnitude, columnar storage also benefits when it comes to indexing individual columns or projection operations.
+
+#### Whole stage code generation
+
+* To understand whole stage code generation, we have to understand the Catalyst Optimizer as well, because whole stage code generation is nothing but a set of rules during the optimization of a Logical Execution Plan (LEP). The object called **CollapseCodegenStages**, extending Rule[SparkPlan], is the object used by Apache Spark for transforming a LEP, by fusing supported operators together. This is done by creating byte code of a new custom operator with the same functionality of the original operators which has been fused together.
+
+* Operator fusing: Other data processing systems call this technique operator fusing. In Apache Spark whole stage code generation is actually the only means for doing so.
+
+* An asterisk symbol, in the explained output, indicates that these operations are executed as a single thread with whole stage generated code. Without asterisk symbol means that each operator is executed as a single thread or at least as different code fragments, passing data from one to another.
 
 
+#### The Volcano Iterator Model
+* The volcano iterator model is an internal data processing model. Nearly every relational database system makes use of it. 
+* It basically says that each atomic operation is only capable to processing one row at a time. 
+
+* By expressing a database query as a directed acyclic graph (DAG), which connects individual operators together, data flows in the opposite direction of the edge direction of the graph. Again, one row at a time, which means that multiple operators run in parallel, but every operator processes a different, and only one, row at a time. 
+
+* When fusing operators together (this is what whole stage code generation does), the volcano iterator model is violated. It is interesting to see that such a violation was done after decades of database research and actually leads to better performance.
 
 # References
 1. [Spark Internals](https://github.com/JerryLead/SparkInternals)
