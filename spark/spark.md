@@ -133,6 +133,7 @@ The new way to do IaaS is Docker and Kubernetes, basically providing a way to au
 
 ### Platform as a Service (PaaS)
 PaaS takes away from you the burden of installing and operating an Apache Spark cluster because this is provided as a service.
+Everything on PaaS is a service, ready to be consumed, and the operation of components is done by the cloud provider. 
 
 ### Software as a Service (SaaS)
 
