@@ -7,6 +7,8 @@
 * [Data APIs](#data-apis)
 * [The Catalyst Optimizer](#the-catalyst-optimizer)
 * [Project Tungsten](#project-tungsten)
+* [Deployment](#deployment)
+* [References](#references)
 
 
 # Concepts
@@ -227,6 +229,7 @@ The greater the number of workers in your Spark cluster for large Datasets, the 
 * Filter your application-based data early in your ETL cycle. 
 
 ### [Spark Documentation](http://spark.apache.org/docs/latest/tuning.html)
+### [HDFS Data Locality](http://www.hadoopinrealworld.com/data-locality-in-hadoop/)
 
 # The Catalyst Optimizer
 
@@ -389,6 +392,97 @@ This means that simple but important things, such as sequential scans, result in
 
 * When fusing operators together (this is what whole stage code generation does), the volcano iterator model is violated. It is interesting to see that such a violation was done after decades of database research and actually leads to better performance.
 
+# Deployment
+## Bare Metal, virtual machine deployment
+### Bare Metal Deployment
+* There are approximately three layers. On the bare metal hardware layer, an operating system is installed which accesses different hardware components through drivers and makes them available to the user application through a common API. 
+
+### Virtual Machine Deployment
+* There is an additional component present here, called hypervisor, on the top of operating system layer. This component basically runs as a user application on the bare metal operating system and emulates a complete hardware stack, so that it can host another operating system running user applications.
+
+* The operating system running on top (or within) of the hypervisor is called **guest** while the operating system running on top of the real bare metal hardware is called **host**. The idea is that the guest operating system is not aware that it is running inside a virtualized hardware, which has two main advantages:
+  * Security: The guest operating system and guest user application can't access resources on the host operating system without being controlled by the hypervisor.
+  * Scalability and elasticity: multiple guest systems can be run on a (powerful) host system allowing for scaling (imagine there are many host systems in the data center). Also, starting and stopping guest systems is relatively fast (in minutes), so a system can react to different load situations (especially in cloud deployments where virtually infinite resources are present across multiple host systems).
+
+* Finally, the user applications are installed on top of the **guest** operation system, i.e. virtual machine operating system.
+* As you can see, there is a huge overhead. You need run many virtual machine OS on top of the OS running on bare metal.
+* Some **hypervisor** can run directly on bare metal, thus save the cost of running **host** operating system.
+
+### Containerization
+
+* We get rid of the guest operating systems and replaced them with containers. 
+* A container does not run on top of a virtualized hardware stack. Instead it runs directly on the **host** operating system. In fact, all user applications are run directly on the host operating system. 
+* The only difference is that the individual **operating system processes** (the runtime components making up a user application) are fenced against each other and also against the host operating system. In fact, a user application has the feeling that it is alone on the host operating system since it doesn't see what's going on, on the host operating system, and therefore also doesn't see the contents of other containers.
+  * **Operating system processes** are the central units of work that an operating system runs. So each user application, which basically is nothing other than a set of machine code on permanent storage, is transformed into a running process by reading it from disk, mapping it to the main memory, and starting to execute the contained set of instructions on the processor.
+  * An application can contain one or more processes, and on Linux, each application thread is executed as a separate process sharing the same memory area. Otherwise, a process can't access memory that the other processes are using; this is an important concept for security and stability. But still, all processes can see and use the same set of resources that the operating system provides.
+
+* So how is this achieved? This concept was born on the Linux kernel and is the de facto standard for container-based virtualization. There are two major Linux kernel extensions, which make this possible: cgroups and namespaces.
+
+#### namespaces
+* Linux needed some way to separate resource views of different operating system processes from each other. The answer was namespaces. There are currently six namespaces implemented:
+  * mnt: controls access to the filesystems
+  * pid: controls access to different processes
+  * net: controls access to networking resources
+  * ipc: controls inter-process communication
+  * uts: returns a different hostname per namespace
+  * user: enables separate user management per process
+* In order to use namespaces, only one single system call has been implemented: setns().
+* The root name spaces are mapped to encapsulated and controlled namespaces with a specific ID. Since every process (or group of processes) is assigned to a sub-namespace of all the six groups mentioned earlier, access to filesystems, other processes, network resources, and user IDs can be restricted. This is an important feature for security.
+* Try list the namespaces using command: `ls -al /proc/1000/ns`
+
+#### cgroups
+* Control groups is a mechanism to prevent a single process from eating up all the CPU power of the host machine. This subsystem is used to control resources such as:
+  * Main memory quota
+  * CPU slices
+  * Filesystem quota
+  * Network priority
+* In addition to that, cgroups provide an additional transient filesystem type. This means that, all data written to that filesystem is destroyed after reboot of the host system. This filesystem is ideal for being assigned to a container. This is because, as we'll learn later, access to real (persistent) filesystems is not possible within a container. Access to persistent filesystems must be specified through mounts during the start of the containers.
+
+#### LXC (Linux Containers)
+* LXC has been part of the vanilla Linux kernel since February 20, 2014, and therefore can be used out-of-the-box on every Linux server.
+
+#### Docker
+* Docker basically makes use of LXC but adds support for building, shipping, and running operation system images. So there exists a layered image format, which makes it possible to pack the filesystem components necessary for running a specific application into a Docker images file.
+* The advantage is that this format is layered, so downstream changes to the image result in the addition of a layer. Therefore, a Docker image can be easily synchronized and kept up to date over a network and the internet, since only the changed layers have to be transferred. In order to create Docker images, Docker is shipped with a little build tool which supports building Docker images from so-called Dockerfiles.
+
+#### Kubernetes 
+* Kubernetes (K8s) is an orchestrator of containers. 
+
+##### Master node manages the whole of the cluster.
+* API server: The API server provides a means of communication between the Kubernetes cluster and external system administrators. It provides a REST API used by the kubectl command line tool. This API can also be used by other consumers, making it possible to plug-in Kubernetes in existing infrastructures and automated processes.
+* Controller manager: The controller manager is responsible for managing the core controller processes within a Kubernetes cluster.
+* Scheduler: The scheduler is responsible for matching the supply of resources provided by the aggregated set of Kubernetes nodes to the demand of resources of the currently undeployed pods.
+
+  In addition, the scheduler also needs to keep track of the user-defined policies and constraints, such as node affinity or data locality, in order to take the correct decisions as to where to place the container.
+  
+Data locality is only considered by Kubernetes during deployment.
+* Etcd: Etcd is a reliable key-value store, storing the overall state of the cluster and all deployed applications at any given point in time.
+
+##### Kubernetes Nodes
+
+* PODs are the basic scheduling units of Kubernetes. A POD consists of at least one or more containers, which are co-located on the same node, so that they can share resources. Such resources include IP addresses (in fact, one physical IP is assigned to each POD so no port conflicts arise between them) and local disk resources which are assigned to all containers of the POD.
+* The kublet is the Kubernetes manager for each Kubernetes node. It is responsible for starting and stopping containers as directed by the controller. It is also responsible for maintaining a PODs state (for example, the number of active containers) and monitoring. Through regular heartbeats, the master is informed about the states of all PODs managed by the kublet.
+* Kube-proxy: The kube-proxy serves as a load balancer among the incoming requests and PODs.
+
+* What **outside** means. Generally, Kubernetes runs in cloud infrastructures and expects that a load balancer is already there for it to use. The load balancer is dynamically and transparently updated when creating a service in Kubernetes, so that the load balancer forwards the specified ports to the correct PODs.
+
+#### Benefits of Using K8s
+* The only disadvantage is the effort you invest in installing and maintaining Kubernetes. 
+* What you gain are the following:
+  * Easy installation and updates of Apache Spark and other additional software packages (such as Apache Flink, Jupyter, or Zeppelin)
+  * Easy switching between different versions
+  * Parallel deployment of multiple clusters for different users or user groups
+  * Fair resource assignment to users and user groups
+  * Straightforward hybrid cloud integration, since the very same setup can be run on any cloud provider supporting Kubernetes as a service
+  
+  
+
+
+
+
+
+
 # References
 1. [Spark Internals](https://github.com/JerryLead/SparkInternals)
 2. Mastering Apache Spark 2.x - 2nd Edition
+
