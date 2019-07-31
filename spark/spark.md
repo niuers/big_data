@@ -8,6 +8,9 @@
 * [The Catalyst Optimizer](#the-catalyst-optimizer)
 * [Project Tungsten](#project-tungsten)
 * [Deployment](#deployment)
+* [Spark MLlib](#spark-mllib)
+* [SparkML](#sparkml)
+* [Apache SystemML](#apache-systemml)
 * [References](#references)
 
 
