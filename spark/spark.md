@@ -475,7 +475,30 @@ Data locality is only considered by Kubernetes during deployment.
   * Fair resource assignment to users and user groups
   * Straightforward hybrid cloud integration, since the very same setup can be run on any cloud provider supporting Kubernetes as a service
   
-  
+# Spark MLlib
+### History
+* MLlib is the original machine learning library that is provided with Apache Spark. This library is still based on the RDD API. 
+
+# SparkML 
+* SparkML library speeds up machine learning by supporting DataFrames and the underlying Catalyst and Tungsten optimizations.
+
+## Apache SparkML pipeline
+* DataFrame: This is the central data store where all the original data and intermediate results are stored in.
+* Transformer: As the name suggests, a transformer transforms one DataFrame into another by adding additional (feature) columns in most of the cases. Transformers are stateless, which means that they don't have any internal memory and behave exactly the same each time they are used; this is a concept you might be familiar with when using the map function of RDDs.
+  * Example: **OneHotEncoder**
+  * Example: **org.apache.spark.ml.feature.VectorAssembler**
+* Estimator: In most of the cases, an estimator is some sort of machine learning model. In contrast to a transformer, an estimator contains an internal state representation and is highly dependent on the history of the data that it has already seen.
+  * Another easy way to distinguish between an estimator and a transformer is the additional method called **fit** on the estimators. Fit actually populates the internal data management structure of the estimators based on a given dataset, which, in the case of StringIndexer, is the mapping table between label strings and label indexes.
+  * Example: **org.apache.spark.ml.feature.StringIndexer** is also an estimator.
+* Pipeline: This is the glue which is joining the preceding components, DataFrame, Transformer and Estimator, together.
+* Parameter: Machine learning algorithms have many knobs to tweak. These are called hyperparameters and the values learned by a machine learning algorithm to fit data are called parameters. By standardizing how hyperparameters are expressed, Apache SparkML opens doors to task automation.
+
+# Apache SystemML
+* Apache Spark can also serve as runtime for third-party components, making it as some sort of operating system for big data applications.
+* So, SystemML is a declarative markup language that can transparently distribute work on Apache Spark. It supports Scale-up using multithreading and SIMD instructions on CPUs as well as GPUs and also Scale-out using a cluster, and of course, both together.
+* Plus there is a cost-based optimizer in place to generate low-level execution plans taking statistics about the Dataset sizes into account. In other words, Apache SystemML is for machine learning, what Catalyst and Tungsten are for DataFrames.
+
+
 
 
 
@@ -485,4 +508,4 @@ Data locality is only considered by Kubernetes during deployment.
 # References
 1. [Spark Internals](https://github.com/JerryLead/SparkInternals)
 2. Mastering Apache Spark 2.x - 2nd Edition
-
+3. [HDFS Design](http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html)
