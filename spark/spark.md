@@ -498,6 +498,8 @@ Data locality is only considered by Kubernetes during deployment.
 * So, SystemML is a declarative markup language that can transparently distribute work on Apache Spark. It supports Scale-up using multithreading and SIMD instructions on CPUs as well as GPUs and also Scale-out using a cluster, and of course, both together.
 * Plus there is a cost-based optimizer in place to generate low-level execution plans taking statistics about the Dataset sizes into account. In other words, Apache SystemML is for machine learning, what Catalyst and Tungsten are for DataFrames.
 
+* Apache Spark solves a lot of common issues in data processing and machine learning, so Apache SystemML can make use of these features. For example, Apache Spark supports the unification of SQL, Graph, Stream, and machine learning data processing on top of a common RDD structure. In other words, it is a general DAG (directed acyclic graph) execution engine supporting lazy evaluation and distributed in-memory caching.
+
 
 
 
