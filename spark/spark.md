@@ -503,6 +503,45 @@ Data locality is only considered by Kubernetes during deployment.
 
 * Apache Spark solves a lot of common issues in data processing and machine learning, so Apache SystemML can make use of these features. For example, Apache Spark supports the unification of SQL, Graph, Stream, and machine learning data processing on top of a common RDD structure. In other words, it is a general DAG (directed acyclic graph) execution engine supporting lazy evaluation and distributed in-memory caching.
 
+### Recommendation System Example
+* Consider a sparse matrix `r` (such as the consumer-product matrix in recommendation system).
+Those of you familiar with linear algebra might know that any matrix can be factorized by two smaller matrices. This means that you have to find two matrices `p` and `q` that, when multiplied with each other, reconstruct the original matrix `r`; let's call the reconstruction `r'`. The goal is to find pu and qi to reconstruct `r'` such that it doesn't differ too much from `r`. This is done using a sum of squared errors objective.
+
+* A common algorithm to find `p` and `q` is called **alternating least squares (ALS)** --alternating because in each iteration the optimization objective switches from `p` to `q` and vice versa. This task takes about 27 lines in R but 800 lines using scala because of optimization codes.
+
+* Apache SystemML's **DSL** (domain specific language) is a subset of R syntax, so you can just take the ALS example and run it 1:1 without any modification on top of Apache SystemML. In addition, a cost-based performance optimizer generates a physical execution plan on top of Apache Spark in order to minimize execution time based on size properties of your data. 
+
+* Apache SystemML can:
+  * Get rid of all performance optimizations in our algorithm implementation
+  * Port our R code 1:1 to some parallel framework
+  * In case of changes, just change our R implementation
+
+* So the key thing on Apache SystemML is the optimizer. This component turns a high-level description of an algorithm in a domain-specific language into a highly optimized physical execution on Apache Spark.
+  * Language Parsing: The first thing that the engine does is a compile step on the DSL. So first, syntax checking, then live variable analysis in order to determine which intermediate results are still needed, and finally a semantic check.
+  * High-level operators: the execution plan using so-called high-level operators (HOPs) is generated. These are constructed from the abstract syntax tree (AST) of the DSL. The following important optimization steps are taking place during this phase:
+    * Static rewrites: The DSL offers a rich set of syntactical and semantic features that makes an implementation easy to understand but may result in a non-optimal execution. Apache SystemML detects these branches of the AST and statically rewrites them to a better version, maintaining the semantic equivalency.
+    * Dynamic rewrites: Dynamic rewrites are very similar to static rewrites but are driven by cost-based statistics considering the size of the Datasets to be processed.
+
+# Deeplearning4j 
+* Deeplearning4j is developed by a Silicon Valley startup called Skymind and can be found at www.deeplearning4j.org. It is open source and runs in many different environments, including Apache Spark.
+
+* The most important components of the framework are as follows:
+  * Deeplearning4j runtime: This is the core module that allows you to define and execute all sorts of neural networks on top of Apache Spark, but it does not use Apache Spark directly; it uses a a tensor library similar to NumPy for Python.
+  * ND4J/ND4S: This tensor/linear algebra library is really the heart of Deeplearning4j. It can also be used standalone and provides accelerated linear algebra on top of CPUs and GPUs. For porting code to a GPU, no code changes are required, since a JVM property configures the underlying execution engine, which can also be a CUDA backend for nVidia GPU cards.
+* In contrast to H2O, Deeplearning4j doesn't necessarily need any additional components to be installed, since it is a native Apache Spark application using the interfaces that Apache Spark provides.
+
+* So what's the advantage of using ND4J over NumPy?
+  * First of all, when using Apache Spark, we stay in the same JVM process and don't have to pay the overhead of IPC (inter process communication) at all.
+  * Then, ND4J is capable of using SIMD instruction sets on modern CPUs, which doubles the performance of ND4J over NumPy. This is achieved by using OpenBLAS.
+  * Finally, ND4J can take advantage of the GPUs present on your machine by just setting a system property on the JVM, provided a recent version of the CUDA drivers and framework is installed on your system.
+
+CopyAdd Highlight Add Note
+# H2O
+* H2O is an open source system developed in Java for machine learning. It offers a rich set of machine learning algorithms and a web-based data processing user interface. It offers the ability to develop in a range of languages: Java, Scala, Python, and R.
+* It also has the ability to interface with Spark, HDFS, SQL, and NoSQL databases.
+* Spark MLlib contains a great deal of functionality, while H2O extends this with a wide range of extra functionality, including Deep Learning.
+
+
 
 
 
