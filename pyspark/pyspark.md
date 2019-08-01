@@ -185,3 +185,6 @@ final: [('0', '00')]
 ```
 df.select([col1, col2, col3]).show()
 ```
+
+## Issues
+* [Spark loop and long lineage drag down evaluation](https://stackoverflow.com/q/57299160/3508427)
