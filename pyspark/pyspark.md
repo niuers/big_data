@@ -39,7 +39,8 @@ df.groupBy(["ID", "Amount"]).agg({"d": "count", "Amount":"max"}).show()
 
 ```
 
-## [Apply a user defined function to create a new column](https://stackoverflow.com/questions/57095416/what-is-wrong-with-this-function-on-pyspark/57097490#57097490)
+## [Apply a user defined function (udf) to create a new column](https://stackoverflow.com/questions/57095416/what-is-wrong-with-this-function-on-pyspark/57097490#57097490)
+### General UDF
 ```
 from pyspark.sql import functions as F
 from pyspark.sql.functions import udf
@@ -47,12 +48,30 @@ from pyspark.sql.functions import udf
 my_udf = udf(lambda my_texts: "text_passed" if my_texts.startswith('_text1') == True else my_texts, StringType())
 # The column 'my_texts' can be an existing column name
 df = spark_df.withColumn('my_texts', my_udf(spark_df['my_texts']))
-
 ```
 
 This specific problem can also be done without using UDF
 ```
 df = spark_df.withColumn("my_texts", F.when(F.instr(spark_df["my_texts"], '_text1')>0, 'text_passed').otherwise("my_texts"))
+```
+
+### UDF on a column of pyspark.ml.linalg.DenseVector
+
+* As of Spark 2.4.0, in the udf for DenseVector etc., the return values have to be python type, not numpy type. 
+For example, in the code below, we have to use `float` to convert the result of `v.dot(vm)` to python type `float`, whereas the `DenseVector.dot` method's default return type is `numpy.float64`. This return type can't be converted by `udf`, and will [throw error](https://stackoverflow.com/questions/44150375/converting-row-into-list-rdd-in-pyspark) due to [spark bug](https://issues.apache.org/jira/browse/SPARK-12157).
+> net.razorvine.pickle.PickleException: expected zero arguments for construction of ClassDict (for numpy.dtype)
+
+```
+v = [('a', DenseVector([1,2,3])),
+    ('b', DenseVector([4,5,6])),
+    ('c', DenseVector([9,8,7]))]
+df1 = spark.createDataFrame(v, ['id', 'values'])
+df1.show()
+
+vm = Vectors.dense([1,2,3])
+dot_prod_udf = F.udf(lambda v: float(v.dot(vm)), FloatType())  #'float' is mandatory here, otherwise error out
+dfv1 = dfv1.withColumn('dot_prod', dot_prod_udf('values'))
+dfv1.show()
 ```
 
 ## [Don't put two spark DataFrames in one line!](https://stackoverflow.com/questions/57093177/pyspark-isin-with-column-in-argument-doesnt-exclude-rows)
