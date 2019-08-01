@@ -65,14 +65,15 @@ For example, in the code below, we have to use `float` to convert the result of 
 v = [('a', DenseVector([1,2,3])),
     ('b', DenseVector([4,5,6])),
     ('c', DenseVector([9,8,7]))]
-df1 = spark.createDataFrame(v, ['id', 'values'])
-df1.show()
+dfv1 = spark.createDataFrame(v, ['id', 'values'])
+dfv1.show()
 
 vm = Vectors.dense([1,2,3])
-dot_prod_udf = F.udf(lambda v: float(v.dot(vm)), FloatType())  #'float' is mandatory here, otherwise error out
+dot_prod_udf = F.udf(lambda v: float(v.dot(vm)), FloatType())
 dfv1 = dfv1.withColumn('dot_prod', dot_prod_udf('values'))
 dfv1.show()
 ```
+
 
 ## [Don't put two spark DataFrames in one line!](https://stackoverflow.com/questions/57093177/pyspark-isin-with-column-in-argument-doesnt-exclude-rows)
 
