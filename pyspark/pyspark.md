@@ -1,3 +1,7 @@
+# Table of Contents
+* [Select Columns from a DataFrame](#select-columns-from-a-dataframe)
+
+
 ## Construct a DataFrame
 * Use a list `Row`s
 
