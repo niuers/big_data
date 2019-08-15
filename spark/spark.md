@@ -12,6 +12,7 @@
 * [SparkML](#sparkml)
 * [Apache SystemML](#apache-systemml)
 * [References](#references)
+* [Questions](#questions)
 
 
 # Concepts
@@ -553,3 +554,6 @@ CopyAdd Highlight Add Note
 1. [Spark Internals](https://github.com/JerryLead/SparkInternals)
 2. Mastering Apache Spark 2.x - 2nd Edition
 3. [HDFS Design](http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html)
+
+# Questions
+* [SQL vs. DataFrame vs. DataSet](https://stackoverflow.com/questions/45430816/writing-sql-vs-using-dataframe-apis-in-spark-sql)
