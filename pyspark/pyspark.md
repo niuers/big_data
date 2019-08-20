@@ -33,6 +33,19 @@ df=spark.createDataFrame(values, columns).show()
 df = spark.createDataFrame([(1, 5, 3), (1,2,6),(2, 3,1), (2,1,-1)] )
 ```
 
+* Construct a DataFrame from a list. You have to create a list of tuples here.
+```
+mylist = ['abcd', 'ijkl', 'efgh', 'efgh', 'abcd', 'ijkl', 'ijkl']
+ml = [(k,) for idx, k in enumerate(mylist)]
+print(ml)
+df = spark.createDataFrame(ml, ['name'])
+```
+
+* Construct a DataFrame from a range
+```
+df = spark.range(5) # column name is 'id' by default
+```
+
 
 ## Groupby and Apply on DataFrame
 
