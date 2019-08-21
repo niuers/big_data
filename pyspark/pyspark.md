@@ -46,6 +46,12 @@ df = spark.createDataFrame(ml, ['name'])
 df = spark.range(5) # column name is 'id' by default
 ```
 
+* Construct a DataFrame with Array as Value
+```
+from pyspark.sql.types import ArrayType, IntegerType
+x = [([1,100]), ([2]), ([3,2])]
+df = spark.createDataFrame(x, ArrayType(IntegerType()))
+```
 
 ## Groupby and Apply on DataFrame
 
