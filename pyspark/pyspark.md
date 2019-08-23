@@ -53,6 +53,28 @@ x = [([1,100]), ([2]), ([3,2])]
 df = spark.createDataFrame(x, ArrayType(IntegerType()))
 ```
 
+## Create a monotionally increasing, sequential ID column
+```
+df = spark.createDataFrame([(3,),(7,),(9,),(1,),(-3,),(5,)], ["values"])
+df.show()
+df = (df.withColumn('dummy', F.monotonically_increasing_id())
+       .withColumn('ID', F.row_number().over(Window.orderBy('dummy')))
+       .drop('dummy'))
+df.show()
+
++------+---+
+|values| ID|
++------+---+
+|     3|  1|
+|     7|  2|
+|     9|  3|
+|     1|  4|
+|    -3|  5|
+|     5|  6|
++------+---+
+
+```
+
 ## Groupby and Apply on DataFrame
 
 ```
