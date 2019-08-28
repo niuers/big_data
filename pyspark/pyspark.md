@@ -81,10 +81,10 @@ df.show()
 from pyspark.sql import functions as F
 df.groupBy(["ID", "Amount"]).agg(F.countDistinct(df['d']).alias('count_d')).show()
 df.groupBy(["ID", "Amount"]).agg({"d": "count", "Amount":"max"}).show()
-
 ```
 
 ## [Apply a user defined function (udf) to create a new column](https://stackoverflow.com/questions/57095416/what-is-wrong-with-this-function-on-pyspark/57097490#57097490)
+
 ### General UDF
 ```
 from pyspark.sql import functions as F
@@ -98,6 +98,20 @@ df = spark_df.withColumn('my_texts', my_udf(spark_df['my_texts']))
 This specific problem can also be done without using UDF
 ```
 df = spark_df.withColumn("my_texts", F.when(F.instr(spark_df["my_texts"], '_text1')>0, 'text_passed').otherwise("my_texts"))
+```
+
+### UDF on a Window
+```
+df = spark.createDataFrame(pd.DataFrame([['A','B','A','C','A'],[1,1,2,1,3],['Eggs','Salad','Peaches','Bread','Water']],index=['User','Order','Food']).T)
+df.show()
+w = Window.partitionBy('User').orderBy('Order').rangeBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+
+@pandas_udf(StringType(), PandasUDFType.GROUPED_AGG)
+def _udf(v):
+    return ' $ '.join(v)
+
+df = df.withColumn('Food List', _udf(df['Food']).over(w)).dropDuplicates(['User', 'Food List']).drop(*['Order', 'Food'])
+df.show(truncate=False)
 ```
 
 ### UDF on a column of pyspark.ml.linalg.DenseVector
