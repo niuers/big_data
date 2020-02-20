@@ -543,6 +543,13 @@ CopyAdd Highlight Add Note
 * Spark MLlib contains a great deal of functionality, while H2O extends this with a wide range of extra functionality, including Deep Learning.
 
 
+### Data Types
+First, According to [Spark DataTypes Document][3]:
+```
+DecimalType: Represents arbitrary-precision signed decimal numbers. Backed internally by java.math.BigDecimal. A BigDecimal consists of an arbitrary precision integer unscaled value and a 32-bit integer scale.
+```
+
+So `DecimalType` is actually `java.math.BigDecimal`. 
 
 
 
